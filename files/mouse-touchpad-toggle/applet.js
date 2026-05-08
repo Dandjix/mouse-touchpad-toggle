@@ -17,6 +17,8 @@ class MouseTouchpadToggle extends Applet.IconApplet{
             this.MTG_updateStatus();
         });
 
+        global.log("updating status ...");
+
         this.MTG_updateStatus()
     }
 
@@ -24,7 +26,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
     {
         const [mouse,touchpad] = this.MTG_identifyDevices("Logitech Wireless Mouse")
 
-        if(mouse=== undefined)
+        if(mouse=== undefined || touchpad == undefined)
         {
             this.set_applet_icon_name("mouse-wireless-disabled-symbolic")
             this._applet_icon.set_icon_size(20)
@@ -46,7 +48,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
             const {
                 icon,
                 tootlip
-            } = MTG_getDisplayInfo()
+            } = this.MTG_getDisplayInfo()
 
             this.set_applet_icon_name(icon)
             this._applet_icon.set_icon_size(20)
@@ -157,9 +159,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
     on_applet_clicked(){
         //cycling
         this.MTG_mode = this.MTG_modes[(this.MTG_modes.indexOf(this.MTG_mode) + 1) % this.MTG_modes.length]
-        this.set_applet_icon_name(this.MTG_getIconName())
-        this._applet_icon.set_icon_size(20)
-        this.MTG_apply()
+        this.MTG_updateStatus()
     }
 
     on_applet_removed_from_panel() {
