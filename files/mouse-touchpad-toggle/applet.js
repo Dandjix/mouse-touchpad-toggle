@@ -1,8 +1,8 @@
 const Applet = imports.ui.applet;
 const Main = imports.ui.main;
 const GLib = imports.gi.GLib;
-const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
+const GUdev = imports.gi.GUdev;
 
 class MouseTouchpadToggle extends Applet.IconApplet{
     constructor(metadata, orientation, panelHeight, instanceId){
@@ -19,15 +19,9 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         ]
         this.MTG_mode = this.MTG_modes[0]
 
-        
-
-        const seat = Clutter.get_default_backend().get_default_seat();
-        this._deviceAddedId = seat.connect('device-added', (seat, device) => {
-            global.log("Device added: " + device.get_device_name());
-            this.MTG_updateStatus();
-        });
-        this._deviceRemovedId = seat.connect('device-removed', (seat, device) => {
-            global.log("Device removed: " + device.get_device_name());
+        this._udevClient = new GUdev.Client({ subsystems: ['input'] });
+        this._udevId = this._udevClient.connect('uevent', (client, action, device) => {
+            global.log(`udev ${action}: ${device.get_name()}`);
             this.MTG_updateStatus();
         });
 
@@ -175,11 +169,8 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         this.MTG_setTouchpadState(true)
         this.MTG_setMouseState(true)
 
-        //disconnect from clutter backend
-        const seat = Clutter.get_default_backend().get_default_seat();
-        seat.disconnect(this._deviceAddedId);
-        seat.disconnect(this._deviceRemovedId);
-        global.log("MTG cleaned up and disabled, goodbye !")
+        //disconnect from backend
+        this._udevClient.disconnect(this._udevId);
     }
 }
 
