@@ -7,12 +7,20 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         super(orientation, panelHeight, instanceId);
         this.set_applet_tooltip("Mouse and touchpad toggle")
 
-        this.mouse_xinput_id = 9
-        this.touchpad_xinput_id = 22
+        const [mouse,touchpad] = this.MTG_identifyDevices("Logitech Wireless Mouse")
+
+        if(mouse=== undefined || touchpad === undefined)
+        {
+            Main.notify("MTG error","could not find touchpad or mouse !");
+            throw "LOL"
+        }
+
+        this.MTG_mouse_xinput_id = mouse
+        this.MTG_touchpad_xinput_id = touchpad
 
         this.MTG_modes = [
-            "both",
-            // "mouse",
+            // "both",
+            "mouse",
             "touchpad"
         ]
         this.MTG_mode = this.MTG_modes[0]
@@ -34,12 +42,68 @@ class MouseTouchpadToggle extends Applet.IconApplet{
 
     MTG_setTouchpadState(activated)
     {
-        GLib.spawn_command_line_async(`xinput set-prop ${this.touchpad_xinput_id} "Device Enabled" ${activated ? "1" : "0"}`);
+        if(!GLib.spawn_command_line_async(`xinput ${activated ? "--enable" : "--disable"} ${this.MTG_touchpad_xinput_id}`))
+        {
+            Main.notify("MTG error","Setting touchpad state has failed!");
+        }
     }
 
     MTG_setMouseState(activated)
     {
-        GLib.spawn_command_line_async(`xinput set-prop ${this.mouse_xinput_id} "Device Enabled" ${activated ? "1" : "0"}`);
+        if(!GLib.spawn_command_line_async(`xinput ${activated ? "--enable" : "--disable"} ${this.MTG_mouse_xinput_id}`))
+        {
+            Main.notify("MTG error","Setting mouse state has failed!");
+        }
+    }
+
+    MTG_identifyDevices(mouse_name)
+    {
+        // Main.notify("MTG report","about to exec ...");
+        const match_mouse_line = new RegExp(`${mouse_name}`)
+        const match_touchpad_line = new RegExp(`Touchpad`)
+
+        const [ok, standard_output, standard_error, exit_status] = GLib.spawn_command_line_sync(`xinput list`)
+        var matched_mouse_ids = []
+        var matched_touchpad_ids = []
+        if(ok)
+        {
+            const xinput_lines = new TextDecoder().decode(standard_output);
+            //mouse
+
+            const pointer_section = xinput_lines.split('Virtual core keyboard')[0];
+            const lines = pointer_section.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                const l = lines[i];
+                if(match_mouse_line.test(l))
+                {
+                    const id = /id=(\d+)/.exec(l)[1];
+                    matched_mouse_ids.push(id)
+                }
+            }
+            //touchpad
+            const touchpad_lines = xinput_lines.split('\n');
+
+            for (let i = 0; i < touchpad_lines.length; i++) {
+                const l = touchpad_lines[i];
+                if(match_touchpad_line.test(l))
+                {
+                    const id = /id=(\d+)/.exec(l)[1];
+                    matched_touchpad_ids.push(id)
+                }
+            }
+        }
+
+        var mouse_id = undefined
+        var touchpad_id = undefined
+        if(matched_mouse_ids.length == 1)
+        {
+            mouse_id = matched_mouse_ids[0]
+        }
+        if(matched_touchpad_ids.length == 1)
+        {
+            touchpad_id = matched_touchpad_ids[0]
+        }
+        return [mouse_id,touchpad_id]
     }
 
     MTG_apply()
