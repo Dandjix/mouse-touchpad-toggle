@@ -7,6 +7,13 @@ class MouseTouchpadToggle extends Applet.IconApplet{
     constructor(metadata, orientation, panelHeight, instanceId){
         super(orientation, panelHeight, instanceId);
 
+        this.MTG_modes = [
+            // "both",
+            "mouse",
+            "touchpad"
+        ]
+        this.MTG_mode = this.MTG_modes[0]
+
         const seat = Clutter.get_default_backend().get_default_seat();
         this._deviceAddedId = seat.connect('device-added', (seat, device) => {
             global.log("Device added: " + device.get_device_name());
@@ -32,17 +39,12 @@ class MouseTouchpadToggle extends Applet.IconApplet{
             this._applet_icon.set_icon_size(20)
             this.set_applet_tooltip("No mouse connected")
             this.MTG_setTouchpadState(true)
+            this.toggleable = false
         }
         else{
             this.MTG_mouse_xinput_id = mouse
             this.MTG_touchpad_xinput_id = touchpad
 
-            this.MTG_modes = [
-                // "both",
-                "mouse",
-                "touchpad"
-            ]
-            this.MTG_mode = this.MTG_modes[0]
             this.MTG_apply()
             
             const {
@@ -53,6 +55,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
             this.set_applet_icon_name(icon)
             this._applet_icon.set_icon_size(20)
             this.set_applet_tooltip(tootlip)
+            this.toggleable = true
         }
     }
 
@@ -157,6 +160,10 @@ class MouseTouchpadToggle extends Applet.IconApplet{
 
 
     on_applet_clicked(){
+        if(!this.toggleable)
+        {
+            Main.notify("MTG error","Could not toggle mouse and keyboard : no mouse connected.");
+        }
         //cycling
         this.MTG_mode = this.MTG_modes[(this.MTG_modes.indexOf(this.MTG_mode) + 1) % this.MTG_modes.length]
         this.MTG_updateStatus()
@@ -171,6 +178,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         const seat = Clutter.get_default_backend().get_default_seat();
         seat.disconnect(this._deviceAddedId);
         seat.disconnect(this._deviceRemovedId);
+        global.log("MTG cleaned up and disabled, goodbye !")
     }
 }
 
