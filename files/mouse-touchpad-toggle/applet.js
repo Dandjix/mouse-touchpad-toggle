@@ -12,22 +12,24 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         if(mouse=== undefined || touchpad === undefined)
         {
             Main.notify("MTG error","could not find touchpad or mouse !");
-            throw "LOL"
+            this.MTG_setTouchpadState(true)
+            throw "Exiting"
         }
+        else{
+            this.MTG_mouse_xinput_id = mouse
+            this.MTG_touchpad_xinput_id = touchpad
 
-        this.MTG_mouse_xinput_id = mouse
-        this.MTG_touchpad_xinput_id = touchpad
+            this.MTG_modes = [
+                // "both",
+                "mouse",
+                "touchpad"
+            ]
+            this.MTG_mode = this.MTG_modes[0]
+            this.MTG_apply()
 
-        this.MTG_modes = [
-            // "both",
-            "mouse",
-            "touchpad"
-        ]
-        this.MTG_mode = this.MTG_modes[0]
-        this.MTG_apply()
-
-        this.set_applet_icon_name(this.MTG_getIconName())
-        this._applet_icon.set_icon_size(20)
+            this.set_applet_icon_name(this.MTG_getIconName())
+            this._applet_icon.set_icon_size(20)
+        }
     }
 
     MTG_getIconName() {
