@@ -5,6 +5,7 @@ const GLib = imports.gi.GLib;
 class MouseTouchpadToggle extends Applet.IconApplet{
     constructor(metadata, orientation, panelHeight, instanceId){
         super(orientation, panelHeight, instanceId);
+        this.set_applet_tooltip("Mouse and touchpad toggle")
 
         this.mouse_xinput_id = 9
         this.touchpad_xinput_id = 22
