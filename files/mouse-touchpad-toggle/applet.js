@@ -1,19 +1,35 @@
 const Applet = imports.ui.applet;
 const Main = imports.ui.main;
 const GLib = imports.gi.GLib;
+const Clutter = imports.gi.Clutter;
 
 class MouseTouchpadToggle extends Applet.IconApplet{
     constructor(metadata, orientation, panelHeight, instanceId){
         super(orientation, panelHeight, instanceId);
-        this.set_applet_tooltip("Mouse and touchpad toggle")
 
+        const seat = Clutter.get_default_backend().get_default_seat();
+        this._deviceAddedId = seat.connect('device-added', (seat, device) => {
+            global.log("Device added: " + device.get_device_name());
+            this.MTG_updateStatus();
+        });
+        this._deviceRemovedId = seat.connect('device-removed', (seat, device) => {
+            global.log("Device removed: " + device.get_device_name());
+            this.MTG_updateStatus();
+        });
+
+        this.MTG_updateStatus()
+    }
+
+    MTG_updateStatus()
+    {
         const [mouse,touchpad] = this.MTG_identifyDevices("Logitech Wireless Mouse")
 
-        if(mouse=== undefined || touchpad === undefined)
+        if(mouse=== undefined)
         {
-            Main.notify("MTG error","could not find touchpad or mouse !");
+            this.set_applet_icon_name("mouse-wireless-disabled-symbolic")
+            this._applet_icon.set_icon_size(20)
+            this.set_applet_tooltip("No mouse connected")
             this.MTG_setTouchpadState(true)
-            throw "Exiting"
         }
         else{
             this.MTG_mouse_xinput_id = mouse
@@ -26,18 +42,30 @@ class MouseTouchpadToggle extends Applet.IconApplet{
             ]
             this.MTG_mode = this.MTG_modes[0]
             this.MTG_apply()
+            
+            const {
+                icon,
+                tootlip
+            } = MTG_getDisplayInfo()
 
-            this.set_applet_icon_name(this.MTG_getIconName())
+            this.set_applet_icon_name(icon)
             this._applet_icon.set_icon_size(20)
+            this.set_applet_tooltip(tootlip)
         }
     }
 
-    MTG_getIconName() {
+    MTG_getDisplayInfo() {
 
         if(this.MTG_mode == "touchpad")
-            return "input-touchpad-symbolic"
-        else //if(this.MTG_mode == "mouse")
-            return "input-mouse-symbolic"
+            return {
+                "icon":"input-touchpad-symbolic",
+                "tootlip":"Switch to mouse"
+            }
+        else if(this.MTG_mode == "mouse")
+            return {
+                "icon":"input-mouse-symbolic",
+                "tootlip":"Switch to touchpad"
+            }
         // else // both
             // return "preferences-desktop-peripherals-symbolic"
     }
@@ -138,6 +166,11 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         //cleanup : restore default functionnality
         this.MTG_setTouchpadState(true)
         this.MTG_setMouseState(true)
+
+        //disconnect from clutter backend
+        const seat = Clutter.get_default_backend().get_default_seat();
+        seat.disconnect(this._deviceAddedId);
+        seat.disconnect(this._deviceRemovedId);
     }
 }
 
