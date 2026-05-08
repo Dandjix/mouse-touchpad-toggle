@@ -1,0 +1,1 @@
+This applet allows for deactivating the mouse with a button click, essentially.
