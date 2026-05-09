@@ -32,7 +32,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
 
     MTG_updateStatus() {
         this.MTG_identifyDevices("Logitech Wireless Mouse", (mouse, touchpad) => {
-            if (mouse === undefined || touchpad === undefined) {
+            if (mouse === undefined && this.MTG_mode == "mouse") {
                 this.set_applet_icon_name("mouse-wireless-disabled-symbolic");
                 this._applet_icon.set_icon_size(20);
                 this.set_applet_tooltip("No mouse connected");
@@ -157,6 +157,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         if(!this.toggleable)
         {
             Main.notify("MTG error","Could not toggle mouse and keyboard : no mouse connected.");
+            return
         }
         global.log("Toggling...")
         //cycling
