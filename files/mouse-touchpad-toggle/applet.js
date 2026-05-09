@@ -4,72 +4,149 @@ const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const GUdev = imports.gi.GUdev;
 
+class MTG_stateMachineState
+{
+    enter(stateMachine){}
+    leave(stateMachine){}
+    deviceUpdate(stateMachine,mouseIsConnected){}
+    clickedIcon(stateMachine){}
+}
+
+
+class MTG_stateMouse extends MTG_stateMachineState
+{
+    enter(stateMachine)
+    {
+        stateMachine.MTG_setTouchpadState(false)
+        stateMachine.MTG_setMouseState(true)
+        stateMachine.update_appearance("input-mouse-symbolic","Click to switch to touchpad")
+    }
+    clickedIcon(stateMachine)
+    {
+        stateMachine.change("touchpad")
+    }
+    deviceUpdate(stateMachine,mouseIsConnected)
+    {
+        if(!mouseIsConnected)
+            stateMachine.change("mouse-disconnected")
+    }
+}
+
+class MTG_stateTouchpad extends MTG_stateMachineState
+{
+    enter(stateMachine)
+    {
+        stateMachine.MTG_setTouchpadState(true)
+        stateMachine.MTG_setMouseState(false)
+        stateMachine.update_appearance("input-touchpad-symbolic","No mouse connected")
+
+    }
+    clickedIcon(stateMachine)
+    {
+        stateMachine.change("mouse")
+    }
+}
+
+class MTG_stateMouseDisconnected extends MTG_stateMachineState
+{
+    enter(stateMachine)
+    {
+        stateMachine.MTG_setTouchpadState(true)
+        // stateMachine.MTG_setMouseState(true) //mouse is disconnected : this would throw (or do nothing, whatever)
+        stateMachine.update_appearance("xsi-window-close-symbolic","No mouse connected");
+    }
+    deviceUpdate(stateMachine,mouseIsConnected)
+    {
+        if(mouseIsConnected)
+            stateMachine.change("mouse")
+    }
+}
+
 class MouseTouchpadToggle extends Applet.IconApplet{
     constructor(metadata, orientation, panelHeight, instanceId){
         super(orientation, panelHeight, instanceId);
 
-        this.set_applet_icon_name("spinner-symbolic");
-        this._applet_icon.set_icon_size(20);
-        this.set_applet_tooltip("Loading Mouse Touchpad Toggle ...");
+        this.update_appearance("process-working-symbolic","Loading Mouse Touchpad Toggle ...");
 
-        this.MTG_modes = [
-            // "both",
-            "mouse",
-            "touchpad"
-        ]
-        this.MTG_mode = this.MTG_modes[0]
+        this.touchpad_id = undefined
+        this.mouse_id = undefined
+
+        this.mode_mouse = new MTG_stateMouse()
+        this.mode_touchpad = new MTG_stateTouchpad()
+        this.mode_mouseDisconnected = new MTG_stateMouseDisconnected()
+
+        this.MTG_getIds((mouse_id,touchpad_id)=>{
+                this.mouse_id = mouse_id
+                this.touchpad_id = touchpad_id
+
+                if(mouse_id !== undefined)
+                    this.mode_current = this.mode_mouse
+                else
+                    this.mode_current = this.mode_mouseDisconnected
+
+                this.mode_current.enter(this)
+        })
 
         this._udevClient = new GUdev.Client({ subsystems: ['input'] });
         this._udevId = this._udevClient.connect('uevent', (client, action, device) => {
             global.log(`udev ${action}: ${device.get_name()}`);
             this.MTG_updateStatus();
         });
-
-        global.log("updating status ...");
-
-        this.MTG_updateStatus()
     }
 
-    MTG_updateStatus() {
-        this.MTG_identifyDevices("Logitech Wireless Mouse", (mouse, touchpad) => {
-            if (mouse === undefined && this.MTG_mode == "mouse") {
-                this.set_applet_icon_name("mouse-wireless-disabled-symbolic");
-                this._applet_icon.set_icon_size(20);
-                this.set_applet_tooltip("No mouse connected");
-                this.MTG_setTouchpadState(true);
-                this.toggleable = false;
-            } else {
-                this.MTG_mouse_xinput_id = mouse;
-                this.MTG_touchpad_xinput_id = touchpad;
-                this.MTG_apply();
-                const { icon, tootlip } = this.MTG_getDisplayInfo();
-                this.set_applet_icon_name(icon);
-                this._applet_icon.set_icon_size(20);
-                this.set_applet_tooltip(tootlip);
-                this.toggleable = true;
-            }
+    update_appearance(icon,tooltip)
+    {
+        this.set_applet_icon_name(icon);
+        this._applet_icon.set_icon_size(20);
+        this.set_applet_tooltip(tooltip);
+    }
+
+    change(mode_name)
+    {
+        if(mode_name == "mouse")
+        {
+            this.mode_current.leave(this)
+            this.mode_current = this.mode_mouse
+            this.mode_current.enter(this)
+        }
+        else if(mode_name == "touchpad")
+        {
+            this.mode_current.leave(this)
+            this.mode_current = this.mode_touchpad
+            this.mode_current.enter(this)
+        }
+        else if(mode_name == "mouse-disconnected")
+        {
+            this.mode_current.leave(this)
+            this.mode_current = this.mode_mouseDisconnected
+            this.mode_current.enter(this)
+        }
+        else
+        {
+            throw `Cannot change to mode : ${mode_name}`
+        }
+    }
+
+
+    MTG_getIds(callback) {
+        this.MTG_identifyDevices("Logitech Wireless Mouse", (mouse_id, touchpad_id) => {
+            callback(mouse_id,touchpad_id)
         });
     }
 
-    MTG_getDisplayInfo() {
-
-        if(this.MTG_mode == "touchpad")
-            return {
-                "icon":"input-touchpad-symbolic",
-                "tootlip":"Switch to mouse"
-            }
-        else if(this.MTG_mode == "mouse")
-            return {
-                "icon":"input-mouse-symbolic",
-                "tootlip":"Switch to touchpad"
-            }
-        // else // both
-            // return "preferences-desktop-peripherals-symbolic"
+    MTG_updateStatus() {
+        this.MTG_identifyDevices("Logitech Wireless Mouse", (mouse_id, touchpad_id) => {
+            if(mouse_id !== undefined)
+                this.mouse_id = mouse_id
+            if(touchpad_id !== undefined)
+                this.touchpad_id = touchpad_id
+            this.mode_current.deviceUpdate(this,mouse_id !== undefined)
+        });
     }
 
     MTG_setTouchpadState(activated)
     {
-        if(!GLib.spawn_command_line_async(`xinput ${activated ? "--enable" : "--disable"} ${this.MTG_touchpad_xinput_id}`))
+        if(!GLib.spawn_command_line_async(`xinput ${activated ? "--enable" : "--disable"} ${this.touchpad_id}`))
         {
             Main.notify("MTG error","Setting touchpad state has failed!");
         }
@@ -77,7 +154,8 @@ class MouseTouchpadToggle extends Applet.IconApplet{
 
     MTG_setMouseState(activated)
     {
-        if(!GLib.spawn_command_line_async(`xinput ${activated ? "--enable" : "--disable"} ${this.MTG_mouse_xinput_id}`))
+        global.log(`mouse ${activated ? "activated" : "deactivated"} ! (${this.mouse_id})`)
+        if(!GLib.spawn_command_line_async(`xinput ${activated ? "--enable" : "--disable"} ${this.mouse_id}`))
         {
             Main.notify("MTG error","Setting mouse state has failed!");
         }
@@ -135,34 +213,9 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         ];
     }
 
-    MTG_apply()
-    {
-        if(this.MTG_mode == "mouse"){
-            this.MTG_setTouchpadState(false)
-            this.MTG_setMouseState(true)
-        }
-        else if(this.MTG_mode == "touchpad"){
-            this.MTG_setTouchpadState(true)
-            this.MTG_setMouseState(false)
-        }
-        else // both
-        {
-            this.MTG_setTouchpadState(true)
-            this.MTG_setMouseState(true)
-        }
-    }
-
 
     on_applet_clicked(){
-        if(!this.toggleable)
-        {
-            Main.notify("MTG error","Could not toggle mouse and keyboard : no mouse connected.");
-            return
-        }
-        global.log("Toggling...")
-        //cycling
-        this.MTG_mode = this.MTG_modes[(this.MTG_modes.indexOf(this.MTG_mode) + 1) % this.MTG_modes.length]
-        this.MTG_updateStatus()
+        this.mode_current.clickedIcon(this)
     }
 
     on_applet_removed_from_panel() {
