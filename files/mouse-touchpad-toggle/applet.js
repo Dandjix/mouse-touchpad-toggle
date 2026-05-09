@@ -20,6 +20,11 @@ class MTG_stateMouse extends MTG_stateMachineState
         stateMachine.MTG_setTouchpadState(false)
         stateMachine.MTG_setMouseState(true)
         stateMachine.update_appearance("input-mouse-symbolic","Click to switch to touchpad")
+
+        stateMachine.MTG_getIds((mouse_id,touchpad_id)=>{
+                if(mouse_id === undefined)
+                    stateMachine.change("mouse-disconnected")
+        })
     }
     clickedIcon(stateMachine)
     {
