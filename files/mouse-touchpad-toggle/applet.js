@@ -4,6 +4,13 @@ const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const GUdev = imports.gi.GUdev;
 
+const AppletDir = `${GLib.get_home_dir()}/.local/share/cinnamon/applets/mouse-touchpad-toggle`
+
+const Icon_loading = `${AppletDir}/icons/content-loading-symbolic.svg`
+const Icon_mouse = `${AppletDir}/icons/mouse-wireless-symbolic.svg`
+const Icon_mouseDisabled = `${AppletDir}/icons/mouse-wireless-disabled-symbolic.svg`
+const Icon_touchpad = `${AppletDir}/icons/touchpad-symbolic.svg`
+
 class MTG_stateMachineState
 {
     enter(stateMachine){}
@@ -19,7 +26,7 @@ class MTG_stateMouse extends MTG_stateMachineState
     {
         stateMachine.MTG_setTouchpadState(false)
         stateMachine.MTG_setMouseState(true)
-        stateMachine.update_appearance("input-mouse-symbolic","Click to switch to touchpad")
+        stateMachine.update_appearance(Icon_mouse,"Click to switch to touchpad")
 
         stateMachine.MTG_getIds((mouse_id,touchpad_id)=>{
                 if(mouse_id === undefined)
@@ -43,7 +50,7 @@ class MTG_stateTouchpad extends MTG_stateMachineState
     {
         stateMachine.MTG_setTouchpadState(true)
         stateMachine.MTG_setMouseState(false)
-        stateMachine.update_appearance("input-touchpad-symbolic","Click to switch to mouse")
+        stateMachine.update_appearance(Icon_touchpad,"Click to switch to mouse")
 
     }
     clickedIcon(stateMachine)
@@ -58,7 +65,7 @@ class MTG_stateMouseDisconnected extends MTG_stateMachineState
     {
         stateMachine.MTG_setTouchpadState(true)
         // stateMachine.MTG_setMouseState(true) //mouse is disconnected : this would throw (or do nothing, whatever)
-        stateMachine.update_appearance("xsi-window-close-symbolic","No mouse connected");
+        stateMachine.update_appearance(Icon_mouseDisabled,"No mouse connected");
     }
     deviceUpdate(stateMachine,mouseIsConnected)
     {
@@ -75,7 +82,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
     constructor(metadata, orientation, panelHeight, instanceId){
         super(orientation, panelHeight, instanceId);
 
-        this.update_appearance("process-working-symbolic","Loading Mouse Touchpad Toggle ...");
+        this.update_appearance(Icon_loading,"Loading Mouse Touchpad Toggle ...");
 
         this.touchpad_id = undefined
         this.mouse_id = undefined
@@ -105,7 +112,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
 
     update_appearance(icon,tooltip)
     {
-        this.set_applet_icon_name(icon);
+        this.set_applet_icon_path(icon);
         this._applet_icon.set_icon_size(20);
         this.set_applet_tooltip(tooltip);
     }
