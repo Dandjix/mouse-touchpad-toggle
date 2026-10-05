@@ -10,6 +10,7 @@ const Icon_loading = `${AppletDir}/icons/content-loading-symbolic.svg`
 const Icon_mouse = `${AppletDir}/icons/mouse-wireless-symbolic.svg`
 const Icon_mouseDisabled = `${AppletDir}/icons/mouse-wireless-disabled-symbolic.svg`
 const Icon_touchpad = `${AppletDir}/icons/touchpad-symbolic.svg`
+const Icon_touchpadAndMouse = `${AppletDir}/icons/mouse-and-touchpad.svg`
 
 class MTG_stateMachineState
 {
@@ -17,6 +18,7 @@ class MTG_stateMachineState
     leave(stateMachine){}
     deviceUpdate(stateMachine,mouseIsConnected){}
     clickedIcon(stateMachine){}
+    middleClickedIcon(stateMachine){}
 }
 
 
@@ -36,6 +38,10 @@ class MTG_stateMouse extends MTG_stateMachineState
     clickedIcon(stateMachine)
     {
         stateMachine.change("touchpad")
+    }
+    middleClickedIcon(stateMachine)
+    {
+        stateMachine.change("touchpad-and-mouse")
     }
     deviceUpdate(stateMachine,mouseIsConnected)
     {
@@ -57,6 +63,29 @@ class MTG_stateTouchpad extends MTG_stateMachineState
     {
         stateMachine.change("mouse")
     }
+        middleClickedIcon(stateMachine)
+    {
+        stateMachine.change("touchpad-and-mouse")
+    }
+}
+
+class MTG_stateTouchpadAndMouse extends MTG_stateMachineState
+{
+    enter(stateMachine)
+    {
+        stateMachine.MTG_setTouchpadState(true)
+        stateMachine.MTG_setMouseState(true)
+        stateMachine.update_appearance(Icon_touchpadAndMouse,"Click to switch to mouse")
+
+    }
+    clickedIcon(stateMachine)
+    {
+        stateMachine.change("mouse")
+    }
+    middleClickedIcon(stateMachine)
+    {
+        stateMachine.change("touchpad")
+    }
 }
 
 class MTG_stateMouseDisconnected extends MTG_stateMachineState
@@ -76,6 +105,10 @@ class MTG_stateMouseDisconnected extends MTG_stateMachineState
     {
         stateMachine.change("touchpad")
     }
+    middleClickedIcon(stateMachine)
+    {
+        stateMachine.change("touchpad-and-mouse")
+    }
 }
 
 class MouseTouchpadToggle extends Applet.IconApplet{
@@ -90,6 +123,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         this.mode_mouse = new MTG_stateMouse()
         this.mode_touchpad = new MTG_stateTouchpad()
         this.mode_mouseDisconnected = new MTG_stateMouseDisconnected()
+        this.mode_touchpadAndMouse = new MTG_stateTouchpadAndMouse()
 
         this.MTG_getIds((mouse_id,touchpad_id)=>{
                 this.mouse_id = mouse_id
@@ -135,6 +169,12 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         {
             this.mode_current.leave(this)
             this.mode_current = this.mode_mouseDisconnected
+            this.mode_current.enter(this)
+        }
+        else if(mode_name == "touchpad-and-mouse")
+        {
+            this.mode_current.leave(this)
+            this.mode_current = this.mode_touchpadAndMouse
             this.mode_current.enter(this)
         }
         else
@@ -234,6 +274,10 @@ class MouseTouchpadToggle extends Applet.IconApplet{
         this.mode_current.clickedIcon(this)
     }
 
+    on_applet_middle_clicked(){
+        this.mode_current.middleClickedIcon(this)
+    }
+
     on_applet_removed_from_panel() {
         //cleanup : restore default functionnality
         this.MTG_setTouchpadState(true)
@@ -245,5 +289,18 @@ class MouseTouchpadToggle extends Applet.IconApplet{
 }
 
 function main(metadata, orientation, panelHeight, instanceId) { // Define the main function receiving the standard parameters sent during the instantiation of the applet to the panel
-    return new MouseTouchpadToggle(metadata, orientation, panelHeight, instanceId); // Return a new instance of our applet
+    
+    const applet = new MouseTouchpadToggle(metadata, orientation, panelHeight, instanceId);
+    
+    // var parent = Object.getPrototypeOf(applet)
+    // global.log(Object.getOwnPropertyNames(applet))
+    // while(parent !==  null)
+    // {
+    //     global.log(`\n--${parent.constructor.name}--\n`)
+    //     global.log(Object.getOwnPropertyNames(parent))
+    //     parent = Object.getPrototypeOf(parent)
+    // }
+    // global.log(JSON.stringify(applet.finalizeContextMenu))
+
+    return applet
 }
