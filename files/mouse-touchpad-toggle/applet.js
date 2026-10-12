@@ -147,7 +147,7 @@ class MouseTouchpadToggle extends Applet.IconApplet{
     update_appearance(icon,tooltip)
     {
         this.set_applet_icon_path(icon);
-        this._applet_icon.set_icon_size(20);
+        this._applet_icon.set_icon_size(18);
         this.set_applet_tooltip(tooltip);
     }
 
